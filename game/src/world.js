@@ -287,7 +287,7 @@ export class World {
     const wood = this._mat(0x8a6b46);
     // Three piers reaching into the eastern sea.
     for (const pz of [-124, -31, 62]) {
-      this._box(46, 0.8, 7, wood, CFG.HARBOUR_X + 24, 0.4, pz);
+      this._box(46, 0.4, 7, wood, CFG.HARBOUR_X + 24, 0.2, pz);
       for (let px = CFG.HARBOUR_X + 6; px < CFG.HARBOUR_X + 46; px += 9) {
         this._box(1.2, 2.4, 1.2, wood, px, -0.6, pz + 3);
         this._box(1.2, 2.4, 1.2, wood, px, -0.6, pz - 3);
@@ -326,27 +326,25 @@ export class World {
   }
 
   _buildBridge() {
-    // A high road bridge crossing the harbour channel to the lighthouse island,
-    // aligned with the street at z = -155.
+    // A low causeway bridge crossing the harbour channel to the lighthouse
+    // island, aligned with the street at z = -155. It is a flat road slab
+    // (no collider), so the player can walk and drive across it — the final
+    // mission step ends on its far side, by the lighthouse.
     const z = -155;
-    const deck = this._box(120, 1.6, 14, this._mat(0x6b7280), CFG.HARBOUR_X + 40, 7, z);
-    deck.castShadow = true;
+    const deck = this._box(124, 0.24, 14, this._mat(0x6b7280), CFG.HARBOUR_X + 42, 0.12, z);
+    deck.receiveShadow = true;
     // Road paint on the deck.
-    const paint = this._box(118, 0.15, 10, this._mat(0x2f3240), CFG.HARBOUR_X + 40, 7.9, z);
+    this._box(122, 0.1, 10, this._mat(0x2f3240), CFG.HARBOUR_X + 42, 0.27, z);
     for (const side of [-1, 1]) {
-      this._box(120, 1.4, 0.8, this._mat(0xffd23e), CFG.HARBOUR_X + 40, 8.4, z + side * 6.6);
+      this._box(124, 0.8, 0.7, this._mat(0xffd23e), CFG.HARBOUR_X + 42, 0.75, z + side * 6.6);
     }
-    // Arched supports.
-    for (const px of [CFG.HARBOUR_X + 8, CFG.HARBOUR_X + 40, CFG.HARBOUR_X + 72]) {
-      this._box(3, 8, 12, this._mat(0x8a94a6), px, 3, z);
-      const arch = new THREE.Mesh(new THREE.TorusGeometry(9, 1.1, 8, 16, Math.PI), this._mat(0xff2e88));
-      arch.position.set(px, 8, z); arch.rotation.y = Math.PI / 2;
+    // Pink gateway arches over the causeway, and slim supports in the water.
+    for (const px of [CFG.HARBOUR_X + 10, CFG.HARBOUR_X + 74]) {
+      this._box(2.5, 2, 12, this._mat(0x8a94a6), px, -0.9, z);
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(8, 1.0, 8, 16, Math.PI), this._mat(0xff2e88));
+      arch.position.set(px, 0.3, z); arch.rotation.y = Math.PI / 2;
       this.scene.add(arch);
     }
-    // Ramps down to street level at the city end.
-    const ramp = this._box(26, 1.2, 14, this._mat(0x6b7280), CFG.HARBOUR_X - 8, 3.4, z);
-    ramp.rotation.z = -0.22;
-    this.colliders.push({ minX: CFG.HARBOUR_X - 20, maxX: CFG.HARBOUR_X + 100, minZ: z - 8, maxZ: z + 8 });
   }
 
   _buildClouds() {
@@ -377,7 +375,9 @@ export class World {
       const side = rng.pick([-1, 1]) * (CFG.STREET_W / 2 - 2.2);
       const x = horizontal ? along : line + side;
       const z = horizontal ? line + side : along;
-      const yaw = horizontal ? (side > 0 ? 0 : Math.PI) : (side > 0 ? Math.PI / 2 : -Math.PI / 2);
+      // Parallel-parked along the curb, nose pointing down the street, so a
+      // stolen car can drive straight off instead of into the block.
+      const yaw = horizontal ? (side > 0 ? Math.PI / 2 : -Math.PI / 2) : (side > 0 ? 0 : Math.PI);
       this.parkedSpots.push({ x, z, yaw });
     }
   }
@@ -412,8 +412,8 @@ export class World {
         pos.z = nz + (dz / d) * r;
       }
     }
-    // Keep inside the playable area.
-    pos.x = Math.max(-260, Math.min(300, pos.x));
+    // Keep inside the playable area (east edge is the bridge end / lighthouse).
+    pos.x = Math.max(-260, Math.min(335, pos.x));
     pos.z = Math.max(-260, Math.min(262, pos.z));
   }
 
