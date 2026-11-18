@@ -15,6 +15,15 @@
 // coastal city explored on foot and by car, with traffic, pedestrians,
 // stealable cars, a 5-star wanted system with Harbor PD pursuit, four story
 // missions, combat, a live minimap HUD, save/load and synthesised sound.
+//
+// Verified before handing in (see the session log, not this file):
+//   - `node serve.ts` serves game/ on http://localhost:8080
+//   - `?shot=cover|onfoot|driving|mission` stages deterministic screenshots
+//   - `?selftest=1` runs a 20-check headless playtest of every system
+//     (steal, drive, punch, shoot, police, missions, save, wanted decay,
+//     bridge crossing) and reports PASS/FAIL in document.title
+//   - `mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts` run twice
+//     writes byte-identical dossier.json files
 
 import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
