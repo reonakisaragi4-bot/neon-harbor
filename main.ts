@@ -24,6 +24,14 @@ import { buildDossier } from './vendor/makefun-game.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
+// Preflight: refuse to hand in a half-built entry rather than writing a
+// dossier over missing files. The grader would refuse it anyway, and a
+// loud failure here is cheaper than a silent one there.
+const required = [join(here, 'game', 'index.html'), join(here, 'game', 'src', 'main.js')];
+for (const file of required) {
+  if (!existsSync(file)) throw new Error(`Neon Harbor entry is incomplete: missing ${file}`);
+}
+
 mkdirSync(out, { recursive: true });
 cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
 mkdirSync(join(out, 'screenshots'), { recursive: true });
