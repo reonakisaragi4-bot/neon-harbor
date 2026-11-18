@@ -84,6 +84,107 @@ class Game {
       const name = urlParams.get('shot') || 'cover';
       applyShot(this, name);
     }
+    if (urlParams.has('selftest')) this.runSelfTest();
+  }
+
+  // Headless playtest (?selftest=1): drives the real systems in order and
+  // reports PASS/FAIL in document.title for the screenshot harness to read.
+  // Never runs in normal play — it needs the query param.
+  async runSelfTest() {
+    const results = [];
+    let step = 'init';
+    const check = (name, ok) => results.push(`${name}:${ok ? 'ok' : 'FAIL'}`);
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    try {
+      step = 'start';
+      this.startGame({});
+      await wait(400);
+      check('start', this.state === 'playing');
+      check('mission1-active', this.missions.state === 'active' && this.missions.index === 0);
+      check('traffic', this.traffic.cars.length >= 10);
+      check('peds', this.peds.peds.length >= 20);
+      check('parked', this.traffic.parked.length >= 10);
+      // Steal a parked car.
+      step = 'steal';
+      // Dismiss the intro dialogue first — while it is open, E talks, not steals.
+      while (this.hud.dialogueOpen) this.hud.advanceDialogue();
+      check('dialogue-dismissed', !this.hud.dialogueOpen);
+      const spot = this.traffic.parked[0];
+      this.teleportPlayer(spot.x + 2, spot.z, 0);
+      await wait(200);
+      this._onInteract();
+      check('steal-car', this.player.inCar && this.driveCar !== null);
+      check('wanted-after-theft', this.wanted.level >= 1);
+      // Drive forward for two game-seconds (stepped directly — headless
+      // rAF is throttled under virtual time, so wall-clock waits lie).
+      step = 'drive';
+      const x0 = this.driveCar.x, z0 = this.driveCar.z;
+      this.keys.KeyW = true;
+      this._stepFrames(40);
+      this.keys.KeyW = false;
+      check('drive-moves', Math.hypot(this.driveCar.x - x0, this.driveCar.z - z0) > 5);
+      check('speedo', Math.abs(this.driveCar.speed) > 1);
+      // Exit the car.
+      step = 'exit';
+      this._onInteract();
+      await wait(200);
+      check('exit-car', !this.player.inCar && this.player.mesh.visible);
+      // Punch a pedestrian down: stand west of them, facing east.
+      step = 'punch';
+      const ped = this.peds.peds.find((p) => p.state === 'walk');
+      this.teleportPlayer(ped.x - 1.2, ped.z, Math.PI / 2);
+      await wait(200);
+      this._onPunch();
+      check('punch-down', ped.state === 'down');
+      // Pistol shot (no target needed — must not throw).
+      step = 'shoot';
+      this._setWeapon('pistol');
+      this._onShoot();
+      check('shoot', this.combat.weapon === 'pistol');
+      // Police spawn and chase at wanted 2.
+      step = 'police';
+      this.setWanted(2);
+      this._stepFrames(30);
+      check('police-spawn', this.police.cops.length >= 2);
+      // Mission 1 completes at the pier marker.
+      step = 'mission';
+      this.setMissionActive(0, 0);
+      this.teleportPlayer(238, -124, 0);
+      this._stepFrames(10);
+      check('mission1-done', this.missions.index === 1);
+      check('cash-reward', this.cash >= 200);
+      // Save / load round-trip.
+      step = 'save';
+      this.saveGame();
+      const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+      check('save', saved && saved.cash === this.cash && saved.missionIndex === 1);
+      // Wanted decays when police cannot see the player (far away).
+      step = 'decay';
+      this.police.clear();
+      this.wanted.unseenT = 99;
+      this.wanted.update(1, false);
+      check('wanted-decay', this.wanted.level === 1);
+      // The final escape: walk the bridge causeway to the lighthouse end.
+      step = 'bridge';
+      this.police.clear();
+      this.setWanted(0);
+      this.player.health = 100;
+      this.setMissionActive(3, 2);
+      this.teleportPlayer(205, -155, Math.PI / 2);
+      this.keys.KeyW = true;
+      this._stepFrames(500);
+      this.keys.KeyW = false;
+      check('bridge-crossing', this.missions.index === 4);
+      check('story-complete', this.missions.finished);
+      const failed = results.filter((r) => r.endsWith('FAIL'));
+      document.title = failed.length === 0
+        ? `SELFTEST PASS (${results.length} checks)`
+        : `SELFTEST FAIL: ${failed.join(', ')}`;
+      window.__selftest = document.title;
+    } catch (err) {
+      document.title = `SELFTEST ERROR at ${step}: ${err.message} [${results.join(',')}]`;
+      window.__selftest = document.title;
+    }
   }
 
   // --- cash pickups -------------------------------------------------------
@@ -415,6 +516,12 @@ class Game {
       this.driveCar ? this.driveCar.heading : 0);
     if (this.cameraPreset) this._applyPresetCamera();
     this.renderer.render(this.scene, this.camera);
+  }
+
+  // Advance the simulation by n fixed 50 ms steps, synchronously. Used by
+  // the headless self-test, where rAF is throttled and wall-clock waits lie.
+  _stepFrames(n) {
+    for (let i = 0; i < n; i++) this._update(0.05, this.clock.elapsedTime + i * 0.05);
   }
 
   _update(dt, t) {
