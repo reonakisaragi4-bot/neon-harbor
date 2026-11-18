@@ -1,79 +1,51 @@
-// The screenshot scenes behind ?shot=start|play|end. Each one plays the real rules forward from a
-// fresh world for a fixed number of steps, steered by a simple autopilot (look ahead each way the
-// paddle could move, keep clear of blocks, chase the lowest coin when that is safe), so the frame
-// is what a short game really looks like and the same seed always gives the same frame.
-import { FIELD, PLAYER, STEP } from './config.js';
-import { EVENT_OVER, KIND_BLOCK } from './world.js';
-import { SCREEN_OVER, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
+// Neon Harbor — deterministic staged scenes for screenshots.
+// ?shot=cover|onfoot|driving|mission&seed=N skips the title screen and sets
+// up one exact scene (fixed positions, fixed wanted level, fixed mission)
+// so a headless render shows the same frame every time. These scenes only
+// rearrange the same systems the player uses — nothing is faked.
+export function applyShot(game, name) {
+  const g = game;
+  g.startGame({ shot: true });
+  g.setClock(10 * 60 + 24); // late morning, hard sun
 
-const START_SECONDS = 5;
-const PLAY_SECONDS = 26;
-const END_LIMIT_SECONDS = 600;
-/**
- * How far ahead, in seconds, the autopilot checks each way it could move: the play scene's pilot
- * looks well ahead and keeps all its lives; the end scene's looks only a moment ahead, so it is
- * caught out once the blocks speed up, as a hurried player is.
- */
-const HORIZON_PLAY = 0.7;
-const HORIZON_END = 0.25;
-const SAMPLE = 1 / 30;
-const DIRECTIONS = [0, -1, 1];
-/** Extra room, each side, it keeps between the paddle and a block. */
-const MARGIN = 10;
-
-/** Seconds until moving in `direction` (-1, 0, 1) runs the paddle into a block; Infinity when it never does. */
-function timeToHit(state, direction, horizon) {
-  const player = state.player;
-  for (let t = SAMPLE; t <= horizon; t += SAMPLE) {
-    const x = Math.min(FIELD.width - player.width, Math.max(0, player.x + direction * PLAYER.speed * t));
-    for (let index = 0; index < state.items.length; index += 1) {
-      const item = state.items[index];
-      if (!item.active || item.kind !== KIND_BLOCK) continue;
-      const y = item.y + item.speed * t;
-      if (y + item.height > player.y && y < player.y + player.height && item.x < x + player.width + MARGIN && item.x + item.width > x - MARGIN) return t;
-    }
+  if (name === 'cover') {
+    // Police chase: Jax in a red car, three stars, three Harbor PD units
+    // closing in, the harbour-heist escape objective live on the HUD.
+    g.enterCarAt(0xff2e4d, -40, -31, Math.PI / 2, 'sedan');
+    g.setCash(2450);
+    g.setWanted(3);
+    g.spawnPoliceAt([
+      { x: -72, z: -27 }, { x: -78, z: -36 }, { x: -64, z: -24 },
+    ]);
+    g.setMissionActive(3, 2);
+    // Front three-quarter framing: the red car facing camera, three Harbor
+    // PD units closing in behind it down the street.
+    g.setCameraPreset('orbit', { yaw: -Math.PI / 2, pitch: 0.3, dist: 13 });
+  } else if (name === 'onfoot') {
+    // On foot downtown, looking across the plaza toward the towers.
+    g.teleportPlayer(-12, 18, Math.PI * 0.9);
+    g.setCash(350);
+    g.setWanted(0);
+    g.setMissionActive(0, 0);
+    g.setCameraPreset('orbit', { yaw: Math.PI * 0.9, pitch: 0.3, dist: 9 });
+  } else if (name === 'driving') {
+    // Cruising Sunset Strip in a yellow cab-style sedan, traffic ahead.
+    g.enterCarAt(0xffc300, -124, 93, Math.PI / 2, 'sedan');
+    g.setCash(1200);
+    g.cruise = true; // roll gently down the strip so the speedo reads live
+    g.setWanted(0);
+    g.setMissionActive(1, 1);
+    g.setCameraPreset('chase');
+  } else if (name === 'mission') {
+    // On the pier at the vault, beacon up, one star, cops inbound.
+    g.teleportPlayer(238, 56, -Math.PI / 2);
+    g.setCash(800);
+    g.setWanted(1);
+    g.spawnPoliceAt([{ x: 200, z: 62 }]);
+    g.setMissionActive(2, 1);
+    // Camera a touch north-east so the pier, the beacon and the city all read.
+    g.setCameraPreset('orbit', { yaw: -Math.PI / 2 + 0.7, pitch: 0.42, dist: 12 });
   }
-  return Infinity;
-}
-
-/** Of the safe ways to move, the one toward the lowest coin (or the centre); else the one that is hit last. */
-function autopilot(state, horizon) {
-  const player = state.player;
-  let coin = null;
-  for (let index = 0; index < state.items.length; index += 1) {
-    const item = state.items[index];
-    if (item.active && item.kind !== KIND_BLOCK && (coin === null || item.y > coin.y)) coin = item;
-  }
-  const target = coin === null ? FIELD.width / 2 : coin.x + coin.width / 2;
-  const centre = player.x + player.width / 2;
-  const wanted = target > centre + 8 ? 1 : target < centre - 8 ? -1 : 0;
-  let best = wanted;
-  let bestTime = timeToHit(state, wanted, horizon);
-  for (let index = 0; index < DIRECTIONS.length && bestTime !== Infinity; index += 1) {
-    const time = timeToHit(state, DIRECTIONS[index], horizon);
-    if (time > bestTime) {
-      bestTime = time;
-      best = DIRECTIONS[index];
-    }
-  }
-  return best;
-}
-
-/**
- * Set `world` to the named scene (start, play or end; any other name is start) and return the
- * screen to draw over it and the best score to show.
- */
-export function stageShot(name, world) {
-  world.reset();
-  if (name !== 'play' && name !== 'end') {
-    for (let index = 0; index < START_SECONDS / STEP; index += 1) world.step(STEP, 0, true);
-    return { screen: SCREEN_TITLE, best: 0 };
-  }
-  const limit = name === 'end' ? END_LIMIT_SECONDS : PLAY_SECONDS;
-  const horizon = name === 'end' ? HORIZON_END : HORIZON_PLAY;
-  for (let index = 0; index < limit / STEP; index += 1) {
-    if (world.step(STEP, autopilot(world.state, horizon), false) & EVENT_OVER) break;
-  }
-  const over = world.state.lives === 0;
-  return { screen: over ? SCREEN_OVER : SCREEN_PLAY, best: world.state.score };
+  // Signal headless screenshot tooling that the scene has settled.
+  setTimeout(() => { window.__neonShotReady = name; }, 2200);
 }
