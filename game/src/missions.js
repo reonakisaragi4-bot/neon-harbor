@@ -15,7 +15,7 @@ export const MISSIONS = [
     steps: [
       {
         type: 'goto', label: 'Meet Rico Vane at Pier 9',
-        target: () => ({ x: 250, z: -124 }),
+        target: () => ({ x: 238, z: -124 }),
         radius: 7,
         talk: [
           ['Rico Vane', 'Jax! You look terrible. Prison agrees with you, huh?'],
@@ -73,13 +73,13 @@ export const MISSIONS = [
     steps: [
       {
         type: 'goto', label: 'Reach the harbour vault on Pier 9',
-        target: () => ({ x: 252, z: 62 }),
+        target: () => ({ x: 238, z: 62 }),
         radius: 7,
         talk: [['Rico Vane', 'Vault\'s on the pier. Thirty seconds of drilling and the harbour is ours.']],
       },
       {
         type: 'hold', label: 'Hold the pier — crack the vault (stay in the ring)',
-        target: () => ({ x: 252, z: 62 }),
+        target: () => ({ x: 238, z: 62 }),
         radius: 10, time: 25,
         onStart: 'alarm',
       },
@@ -122,7 +122,7 @@ export class MissionManager {
     g.userData.diamond = diamond;
     const ring = new THREE.Mesh(new THREE.TorusGeometry(4, 0.25, 8, 32),
       new THREE.MeshBasicMaterial({ color: 0xffd23e }));
-    ring.rotation.x = Math.PI / 2; ring.position.y = 0.25; g.add(ring);
+    ring.rotation.x = Math.PI / 2; ring.position.y = 0.9; g.add(ring);
     return g;
   }
 
