@@ -111,7 +111,9 @@ export class Player {
     const cx = target.x - Math.sin(yaw) * Math.cos(pitch) * dist;
     const cz = target.z - Math.cos(yaw) * Math.cos(pitch) * dist;
     const cy = target.y + Math.sin(pitch) * dist;
-    camera.position.set(cx, Math.max(0.6, cy), cz);
+    // Subtle head-bob on foot: the camera breathes with the walk cycle.
+    const bob = !driving && this.moving ? Math.sin(this.walkPhase * 2) * 0.06 : 0;
+    camera.position.set(cx, Math.max(0.6, cy + bob), cz);
     camera.lookAt(target);
   }
 
