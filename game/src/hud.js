@@ -35,6 +35,13 @@ export class HUD {
   show() { this.el.hud.classList.remove('hidden'); }
   hide() { this.el.hud.classList.add('hidden'); }
 
+  // The #help cheat-sheet fades out once the player knows the controls
+  // (called by the game after a few seconds, or at once in shot mode).
+  hideHelp() {
+    const help = document.getElementById('help');
+    if (help) help.style.opacity = '0';
+  }
+
   setCash(n) { this.el.cash.textContent = '$' + n.toLocaleString('en-US'); }
   setStars(n) {
     let s = '';
@@ -168,6 +175,12 @@ export class HUD {
       g.fillStyle = '#ff2a2a';
       g.beginPath(); g.arc(toX(c.x), toZ(c.z), 4, 0, Math.PI * 2); g.fill();
       g.strokeStyle = '#fff'; g.lineWidth = 1; g.stroke();
+    }
+    // Wanted: a pulsing red ring around the player arrow while the heat is on.
+    if (state.wanted > 0) {
+      const pulse = 9 + Math.sin(performance.now() * 0.006) * 3;
+      g.strokeStyle = '#ff2a2a'; g.lineWidth = 2;
+      g.beginPath(); g.arc(toX(state.playerX), toZ(state.playerZ), pulse, 0, Math.PI * 2); g.stroke();
     }
     // Player arrow.
     const px = toX(state.playerX), pz = toZ(state.playerZ);
