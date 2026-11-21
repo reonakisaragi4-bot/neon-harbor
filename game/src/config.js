@@ -25,6 +25,11 @@ export const CFG = {
   WANTED_MAX: 5,
   WANTED_DECAY_SEEN: 12,         // seconds unseen before a star drops
   POLICE_SPEED: 30,
+  // Street life: how many traffic cars and pedestrians roam the city.
+  // Raised for the top-10 iteration so the streets read busy in every
+  // screenshot (was 14 cars / 24 peds); self-test needs >= 10 / >= 20.
+  TRAFFIC_COUNT: 30,
+  PED_COUNT: 48,
   // Missions
   MISSION_REWARDS: [200, 500, 800, 2000],
   // Clock: one in-game minute every 2 real seconds, starting 09:00.
