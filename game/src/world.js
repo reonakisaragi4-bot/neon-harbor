@@ -159,7 +159,8 @@ export class World {
     const facadeMats = PALETTE.building.map((c) => new THREE.MeshLambertMaterial({ color: c, map: facadeTex }));
     const roofMats = PALETTE.roof.map((c) => this._mat(c));
     const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-    const signNames = ['HOTEL CORAL', 'PIER 9', 'TACO BAY', 'NEON BAR', 'SURF SHOP', 'PALM MOTEL', 'DOCK CAFE'];
+    // Shuffled per seed so different cities hang different signs.
+    const signNames = rng.shuffle(['HOTEL CORAL', 'PIER 9', 'TACO BAY', 'NEON BAR', 'SURF SHOP', 'PALM MOTEL', 'DOCK CAFE']);
     let signIdx = 0;
     for (let bi = 0; bi < CFG.BLOCKS; bi++) {
       for (let bj = 0; bj < CFG.BLOCKS; bj++) {
@@ -190,13 +191,16 @@ export class World {
             ant.position.set(x + rng.range(-5, 5), bh + 3, z + rng.range(-5, 5));
             S.add(ant);
           }
-          // Neon sign on some taller buildings.
+          // Neon sign on some taller buildings. Double-sided so the glow
+          // reads from the street behind it too, not just face-on. Hung
+          // low enough (just over half the building's height) that a
+          // street-level camera can actually see it.
           if (bh > 20 && signIdx < signNames.length && rng.chance(0.6)) {
             const name = signNames[signIdx++];
             const color = '#' + rng.pick(PALETTE.neon).toString(16).padStart(6, '0');
-            const sign = new THREE.Mesh(new THREE.PlaneGeometry(13, 5),
-              new THREE.MeshBasicMaterial({ map: makeSignTexture(name, color) }));
-            sign.position.set(x, bh * 0.72, z + bd / 2 + 0.15);
+            const sign = new THREE.Mesh(new THREE.PlaneGeometry(15, 6),
+              new THREE.MeshBasicMaterial({ map: makeSignTexture(name, color), side: THREE.DoubleSide }));
+            sign.position.set(x, bh * 0.55, z + bd / 2 + 0.15);
             S.add(sign);
             this.neonSigns.push(sign);
           }
@@ -395,6 +399,19 @@ export class World {
     const along = rng.range(-CFG.CITY_HALF + 10, CFG.CITY_HALF - 10);
     const off = rng.pick([-1, 1]) * (CFG.STREET_W / 2 + CFG.SIDEWALK_W / 2);
     if (rng.chance(0.5)) return { x: along, z: line + off };
+    return { x: line + off, z: along };
+  }
+
+  // A sidewalk point near (x,z), for staged scenes: picks a street line
+  // within `radius` of the point and a spot along it within the same radius.
+  sidewalkPointNear(rng, x, z, radius = 45) {
+    const near = this.streetLines.filter((l) => Math.abs(l - x) < radius || Math.abs(l - z) < radius);
+    const line = near.length ? rng.pick(near) : rng.pick(this.streetLines);
+    const onXStreet = Math.abs(line - z) < radius && (Math.abs(line - x) >= radius || rng.chance(0.5));
+    const centre = onXStreet ? x : z;
+    const along = centre + rng.range(-radius, radius);
+    const off = rng.pick([-1, 1]) * (CFG.STREET_W / 2 + CFG.SIDEWALK_W / 2);
+    if (onXStreet) return { x: along, z: line + off };
     return { x: line + off, z: along };
   }
 
