@@ -25,7 +25,7 @@
 //   - `mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts` run twice
 //     writes byte-identical dossier.json files
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
@@ -39,6 +39,16 @@ const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 const required = [join(here, 'game', 'index.html'), join(here, 'game', 'src', 'main.js')];
 for (const file of required) {
   if (!existsSync(file)) throw new Error(`Neon Harbor entry is incomplete: missing ${file}`);
+}
+
+// Screenshots: the gate takes 3–4 images, each at most 256 KiB. Refuse a
+// half-built entry here rather than handing the grader a broken one.
+const shotDir = join(here, 'screenshots');
+const shots = existsSync(shotDir) ? readdirSync(shotDir).filter((f) => !f.startsWith('.')) : [];
+if (shots.length < 3 || shots.length > 4) throw new Error(`Neon Harbor entry is incomplete: ${shots.length} screenshots, need 3–4`);
+for (const shot of shots) {
+  const bytes = statSync(join(shotDir, shot)).size;
+  if (bytes > 262144) throw new Error(`Neon Harbor entry is incomplete: ${shot} is ${bytes} bytes, over the 256 KiB cap`);
 }
 
 mkdirSync(out, { recursive: true });
