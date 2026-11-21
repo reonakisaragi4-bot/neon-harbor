@@ -122,6 +122,8 @@ export class SoundEngine {
   }
 
   shot() { this._noiseBurst(0.16, 1800, 0.5, 'highpass'); this._tone(140, 0.12, 0.35, 'square', 50); }
+  // Two-tone car horn, for traffic stuck behind a slow car ahead.
+  horn() { this._tone(370, 0.28, 0.2, 'square'); this._tone(466, 0.28, 0.18, 'square'); }
   punch() { this._noiseBurst(0.12, 300, 0.5); }
   pickup() { this._tone(880, 0.1, 0.22); setTimeout(() => this._tone(1318, 0.16, 0.22), 90); }
   cash() { this._tone(1046, 0.09, 0.25); setTimeout(() => this._tone(1568, 0.22, 0.25), 90); }
