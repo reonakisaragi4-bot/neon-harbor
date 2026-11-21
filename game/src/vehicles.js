@@ -136,7 +136,7 @@ export class TrafficManager {
     this.cars = [];       // {mesh, axis, dir, lane, speed, targetSpeed}
     this.parked = [];     // {mesh, x, z, yaw, taken}
     this._spawnParked();
-    this._spawnTraffic(14);
+    this._spawnTraffic(CFG.TRAFFIC_COUNT);
   }
 
   _spawnParked() {
@@ -150,24 +150,51 @@ export class TrafficManager {
     }
   }
 
+  // One traffic car on a given street line; shared by the city-wide spawn
+  // and by staged shots that need cars near the camera.
+  _makeTrafficCar(axis, line, dir, along) {
+    const mesh = makeCarMesh(this.rng.pick(PALETTE.car), this.rng.chance(0.2) ? 'truck' : 'sedan');
+    const lane = dir > 0 ? 3.4 : -3.4; // right-hand traffic
+    const car = {
+      mesh, axis, dir, lane,
+      speed: this.rng.range(7, 12),
+      targetSpeed: this.rng.range(7, 12),
+      x: axis === 'x' ? along : line + lane,
+      z: axis === 'x' ? line + lane : along,
+    };
+    this.scene.add(mesh);
+    this.cars.push(car);
+    this._syncCar(car);
+    return car;
+  }
+
   _spawnTraffic(n) {
     for (let i = 0; i < n; i++) {
-      const mesh = makeCarMesh(this.rng.pick(PALETTE.car), this.rng.chance(0.2) ? 'truck' : 'sedan');
       const axis = this.rng.chance(0.5) ? 'x' : 'z';
       const line = this.rng.pick(this.world.streetLines);
       const dir = this.rng.pick([-1, 1]);
-      const lane = dir > 0 ? 3.4 : -3.4; // right-hand traffic
       const along = this.rng.range(-CFG.CITY_HALF, CFG.CITY_HALF);
-      const car = {
-        mesh, axis, dir, lane,
-        speed: this.rng.range(7, 12),
-        targetSpeed: this.rng.range(7, 12),
-        x: axis === 'x' ? along : line + lane,
-        z: axis === 'x' ? line + lane : along,
-      };
-      this.scene.add(mesh);
-      this.cars.push(car);
-      this._syncCar(car);
+      this._makeTrafficCar(axis, line, dir, along);
+    }
+  }
+
+  // Stage n extra traffic cars on streets near (cx,cz) — used by the
+  // screenshot scenes so the road by the camera is never empty. `exclude`
+  // is a {x,z} point (e.g. the player's car) kept clear of staged cars.
+  spawnNear(cx, cz, n, exclude = null) {
+    const nearLines = this.world.streetLines.filter((l) => Math.abs(l - cx) < 60 || Math.abs(l - cz) < 60);
+    for (let i = 0; i < n; i++) {
+      const line = nearLines.length ? this.rng.pick(nearLines) : this.rng.pick(this.world.streetLines);
+      const onXStreet = Math.abs(line - cz) < 60 && (Math.abs(line - cx) >= 60 || this.rng.chance(0.5));
+      const axis = onXStreet ? 'x' : 'z';
+      const centre = axis === 'x' ? cx : cz;
+      const along = centre + this.rng.range(-45, 45);
+      const dir = this.rng.pick([-1, 1]);
+      const x = axis === 'x' ? along : line + (dir > 0 ? 3.4 : -3.4);
+      const z = axis === 'x' ? line + (dir > 0 ? 3.4 : -3.4) : along;
+      if (exclude && Math.hypot(x - exclude.x, z - exclude.z) < 13) continue;
+      if (Math.abs(x) > CFG.CITY_HALF + 4 || Math.abs(z) > CFG.CITY_HALF + 4) continue;
+      this._makeTrafficCar(axis, line, dir, along);
     }
   }
 
