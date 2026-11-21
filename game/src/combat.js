@@ -43,6 +43,8 @@ export class Combat {
     const ped = peds.nearestInCone(playerPos.x, playerPos.z, fx, fz, 2.4, 0.6);
     if (ped) {
       peds.knockDown(ped);
+      // The punch scares the crowd too — nearby pedestrians flee the fight.
+      peds.scare(playerPos.x, playerPos.z, 7);
       this.onEvent('hitPed', { ped, weapon: 'fists' });
       this.onEvent('wanted', { n: 1, reason: 'assault' });
       return true;
