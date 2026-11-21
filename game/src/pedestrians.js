@@ -38,7 +38,18 @@ export class PedestrianManager {
     this.world = world;
     this.rng = rng;
     this.peds = [];
-    for (let i = 0; i < 24; i++) this._spawn();
+    for (let i = 0; i < CFG.PED_COUNT; i++) this._spawn();
+  }
+
+  // Stage n extra pedestrians on sidewalks near (cx,cz) — used by the
+  // screenshot scenes so the sidewalks by the camera are never empty.
+  // `exclude` is a {x,z} point (e.g. the player) kept clear of staged peds.
+  spawnNear(cx, cz, n, exclude = null) {
+    for (let i = 0; i < n; i++) {
+      const p = this.world.sidewalkPointNear(this.rng, cx, cz, 45);
+      if (exclude && Math.hypot(p.x - exclude.x, p.z - exclude.z) < 2.5) continue;
+      this._spawn(p);
+    }
   }
 
   _spawn(at = null) {
