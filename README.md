@@ -16,15 +16,19 @@ runtime, no assets borrowed from any commercial game.
   a harbour with docks, boats and a lighthouse, and a neon-arched bridge.
 - **On foot & by car:** third-person walking, running and jumping with an
   orbit camera; steal any parked car (E), arcade driving, chase cam.
-- **Living streets:** traffic cruising the grid, pedestrians strolling the
-  sidewalks who flee a speeding car, cash pickups on the corners.
+- **Living streets:** traffic cruising the grid (30 cars), pedestrians strolling the
+  sidewalks who flee a speeding car (48 of them), cash pickups on the corners.
+  Staged screenshots pack extra traffic and pedestrians near the camera, and
+  the shots are taken in golden-hour light so the neon signs glow.
 - **Wanted:** 1–5 stars for theft, assault and shooting; Harbor PD spawns,
   chases and rams; lose them to cool off.
 - **Story:** four missions — First Contact, Getaway Driver, The Delivery,
   The Harbour Heist — with objectives, a beacon, dialogue and cash rewards.
 - **Combat:** fists up close, pistol with muzzle flash and tracers.
 - **HUD:** cash, wanted stars, health, clock, mission objective and a live
-  2D minimap. Start screen, pause menu, save/load via localStorage.
+  2D minimap (with a pulsing red ring while the heat is on). Start screen, pause menu, save/load via localStorage.
+  The controls cheat-sheet fades out a few seconds after play starts, so it
+  never clutters a screenshot.
 - **Sound:** fully synthesised WebAudio — engine hum, sirens, gunshots,
   pickups. No audio files.
 
