@@ -19,6 +19,15 @@ export function makeRng(seed) {
     int(min, max) { return Math.floor(min + next() * (max - min + 1)); },
     pick(arr) { return arr[Math.floor(next() * arr.length)]; },
     chance(p) { return next() < p; },
+    // Fisher-Yates shuffle of a copy: the original array keeps its order.
+    shuffle(arr) {
+      const out = arr.slice();
+      for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(next() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+      return out;
+    },
     // Gaussian-ish pick around a centre, clamped to [min, max].
     bell(min, max, centre) {
       const v = (next() + next() + next()) / 3;
