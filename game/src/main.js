@@ -46,17 +46,18 @@ class Game {
     this.scene.fog = new THREE.Fog(0x9fd8ef, 420, 950);
     this.camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 1400);
 
-    // Sun-soaked lighting: warm sun + sky bounce.
-    const hemi = new THREE.HemisphereLight(0xbfd9ff, 0x8a7a5a, 0.95);
-    this.scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xffe9b0, 1.7);
-    sun.position.set(180, 260, 120);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    sun.shadow.camera.left = -300; sun.shadow.camera.right = 300;
-    sun.shadow.camera.top = 300; sun.shadow.camera.bottom = -300;
-    sun.shadow.camera.far = 800;
-    this.scene.add(sun);
+    // Sun-soaked lighting: warm sun + sky bounce. Kept as fields so the
+    // golden-hour shot preset can re-aim and recolour them.
+    this.hemiLight = new THREE.HemisphereLight(0xbfd9ff, 0x8a7a5a, 0.95);
+    this.scene.add(this.hemiLight);
+    this.sunLight = new THREE.DirectionalLight(0xffe9b0, 1.7);
+    this.sunLight.position.set(180, 260, 120);
+    this.sunLight.castShadow = true;
+    this.sunLight.shadow.mapSize.set(2048, 2048);
+    this.sunLight.shadow.camera.left = -300; this.sunLight.shadow.camera.right = 300;
+    this.sunLight.shadow.camera.top = 300; this.sunLight.shadow.camera.bottom = -300;
+    this.sunLight.shadow.camera.far = 800;
+    this.scene.add(this.sunLight);
 
     // World + systems.
     this.world = new World(this.scene, this.rng);
@@ -85,6 +86,22 @@ class Game {
       applyShot(this, name);
     }
     if (urlParams.has('selftest')) this.runSelfTest();
+  }
+
+  // Golden-hour lighting for staged shots: low warm sun from the west,
+  // orange sky and fog, longer shadows — the neon signs read against a
+  // darker sky instead of washing out in hard midday sun. The clock is set
+  // to 18:32 by shots.js to match. Normal play keeps the midday look.
+  setGoldenHour() {
+    this.sunLight.color.setHex(0xffab5e);
+    this.sunLight.intensity = 1.45;
+    this.sunLight.position.set(-260, 95, 170);
+    this.hemiLight.color.setHex(0xff9e7a);
+    this.hemiLight.groundColor.setHex(0x5a4636);
+    this.hemiLight.intensity = 0.7;
+    this.scene.background = new THREE.Color(0xff9a52);
+    this.scene.fog = new THREE.Fog(0xffb27a, 380, 900);
+    this._goldenHour = true;
   }
 
   // Headless playtest (?selftest=1): drives the real systems in order and
@@ -266,6 +283,15 @@ class Game {
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('overScreen').classList.add('hidden');
     this.hud.show();
+    // The #help cheat-sheet is useful for the first seconds, then noise:
+    // in shot mode it hides at once (it cluttered every screenshot), in
+    // normal play it fades out 6 s after starting. The start screen keeps
+    // its own full controls list either way.
+    if (this.shotMode) this.hud.hideHelp();
+    else {
+      clearTimeout(this._helpTimer);
+      this._helpTimer = setTimeout(() => this.hud.hideHelp(), 6000);
+    }
     this.state = 'playing';
     if (!load && !shot && this.missions.index === 0 && this.missions.state === 'idle') {
       // Mission 1 starts the moment you step into the city.
@@ -587,6 +613,20 @@ class Game {
       }
     }
 
+    // Traffic honk: stuck behind a slow car ahead, the street lets you know.
+    if (inCar && this.driveCar) {
+      this._hornCd = Math.max(0, (this._hornCd || 0) - dt);
+      if (this._hornCd === 0) {
+        const hx = Math.sin(this.driveCar.heading), hz = Math.cos(this.driveCar.heading);
+        const ahead = this.traffic.cars.some((c) => {
+          const dx = c.x - this.driveCar.x, dz = c.z - this.driveCar.z;
+          const d = Math.hypot(dx, dz);
+          return d > 1 && d < 11 && c.speed < 2 && (dx * hx + dz * hz) / d > 0.85;
+        });
+        if (ahead) { this.sound.horn(); this._hornCd = 3; }
+      }
+    }
+
     // Clock.
     this.clockMin = (this.clockMin + dt * CFG.CLOCK_RATE) % (24 * 60);
 
@@ -614,7 +654,7 @@ class Game {
         ? this.missions.currentTarget : this.missions.startMarkerPos();
       this.hud.drawMinimap({
         playerX: pPos.x, playerZ: pPos.z, playerYaw: inCar ? this.driveCar.heading : this.player.yaw,
-        inCar, police: this.police.positions(),
+        inCar, wanted: this.wanted.level, police: this.police.positions(),
         traffic: this.traffic.cars.map((c) => ({ x: c.x, z: c.z })),
         peds: this.peds.peds.filter((p) => p.state !== 'down').map((p) => ({ x: p.x, z: p.z })),
         target, cashSpots: this.cashSpots.filter((c) => c.active),
