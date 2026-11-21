@@ -105,10 +105,10 @@ export class PoliceManager {
       } else c.stuckT = 0;
       c.mesh.position.set(c.x, 0, c.z);
       c.mesh.rotation.y = c.heading;
-      // Flashing light bar.
+      // Flashing light bar — the flash quickens as the heat rises.
       const lb = c.mesh.userData.lightBar;
       if (lb) {
-        const phase = Math.floor(t * 6) % 2 === 0;
+        const phase = Math.floor(t * (4 + this.wanted.level * 1.5)) % 2 === 0;
         lb.red.material.color.setHex(phase ? 0xff2020 : 0x550000);
         lb.blue.material.color.setHex(phase ? 0x101050 : 0x2050ff);
       }
