@@ -141,6 +141,7 @@ export class MissionManager {
     const s = this.mission.steps[this.step];
     this.timer = s.time || 0;
     this.holdT = 0;
+    this._warned = false; // one low-time warning per timed step
     this.currentTarget = s.target();
     this.beacon.position.set(this.currentTarget.x, 0, this.currentTarget.z);
     this.beacon.visible = true;
@@ -172,6 +173,11 @@ export class MissionManager {
       if (d < s.radius) this._arrive(s);
     } else if (s.type === 'timed') {
       this.timer -= dt;
+      // One warning when the clock gets tight, so the player knows to hurry.
+      if (!this._warned && this.timer < 10 && this.timer > 0) {
+        this._warned = true;
+        this.hud.toast('⏱ 10 seconds left — hurry!', 2200);
+      }
       if (this.timer <= 0) {
         this.hud.toast('Too slow! Try again.');
         this._restartMission();
